@@ -138,6 +138,74 @@ async function runVerification() {
     });
     assert(campaign.roas > 0, "Ad Campaign Tracking & ROAS Calculation", "ROAS value invalid");
 
+    // Test 9: Agent Device Pairing, Token Hashing & Scope Validation
+    const { hashToken, generateSecureToken, generatePairingCode } = await import("../lib/agent-auth");
+    const rawToken = `jvt_${generateSecureToken()}`;
+    const tokenHash = hashToken(rawToken);
+    const pairingCode = generatePairingCode();
+    assert(tokenHash.length === 64, "Device Token SHA-256 Hashing", "Hash length was not 64 chars");
+    assert(pairingCode.startsWith("JARVIS-"), "Pairing Code Generator", "Pairing code format invalid");
+
+    const device = await prisma.agentDevice.create({
+      data: {
+        organizationId: orgA.id,
+        deviceName: "Test Nexora Workstation",
+        platform: "windows",
+        status: "ONLINE",
+      },
+    });
+    const cred = await prisma.agentCredential.create({
+      data: {
+        deviceId: device.id,
+        tokenHash,
+        refreshTokenHash: hashToken("refresh_token_test"),
+        scopes: "metrics:read,tickets:read,desktop:control",
+        expiresAt: new Date(Date.now() + 86400000),
+      },
+    });
+    assert(cred.id.length > 0, "Device Credential Record Persistence", "Credential failed to persist");
+
+    // Test 10: Real-time Transactional Outbox & Event Publishing
+    const { publishEvent } = await import("../lib/events");
+    const outboxEvt = await publishEvent(orgA.id, "METRIC_UPDATED", { metric: "MRR", value: 50000 });
+    assert(outboxEvt.eventType === "METRIC_UPDATED", "Transactional Outbox Event Publisher", "Event publishing failed");
+
+    // Test 11: AI Tool Registry Risk Level & Confirmation Checks
+    const { validateToolExecution } = await import("../lib/tool-registry");
+    const lowRiskCheck = validateToolExecution("get_metrics", ["metrics:read"], false);
+    assert(lowRiskCheck.allowed && !lowRiskCheck.requiresConfirmation, "Tool Registry (Low Risk Execution)", "Low risk tool was blocked");
+
+    const highRiskCheck = validateToolExecution("close_window", ["desktop:control"], false);
+    assert(highRiskCheck.requiresConfirmation, "Tool Registry Risk Engine (High Risk Guard)", "High risk action was not guarded");
+
+    const confirmedCheck = validateToolExecution("close_window", ["desktop:control"], true);
+    assert(confirmedCheck.allowed, "Tool Registry (High Risk User Approved)", "Confirmed high risk action was blocked");
+
+    // Test 12: Multimodal Screen Intelligence Processing & Vision Fallback
+    const { analyzeScreenWithGemini } = await import("../lib/vision-service");
+    const dummyBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+    const visionResult = await analyzeScreenWithGemini(dummyBase64, "image/png", "Test Window");
+    assert(visionResult.analysis.length > 0, "Screen Intelligence & Multimodal Vision", "Vision analysis returned empty");
+
+    // Test 13: Autonomous Workflow Engine & Task Step State Transitions
+    const agentTask = await prisma.agentTask.create({
+      data: {
+        organizationId: orgA.id,
+        deviceId: device.id,
+        title: "Scheduled Social & Metric Report",
+        goal: "Verify revenue and draft announcement",
+        status: "QUEUED",
+        steps: {
+          create: [
+            { stepNumber: 1, toolName: "get_metrics", status: "COMPLETED" },
+            { stepNumber: 2, toolName: "draft_social_post", status: "PENDING" },
+          ],
+        },
+      },
+      include: { steps: true },
+    });
+    assert(agentTask.steps.length === 2, "Autonomous Task Engine (Multi-Step Plan)", "Task steps failed to create");
+
     // Clean up test organizations
     await prisma.organization.delete({ where: { id: orgA.id } });
     await prisma.organization.delete({ where: { id: orgB.id } });

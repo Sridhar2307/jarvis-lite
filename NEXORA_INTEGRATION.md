@@ -72,3 +72,4 @@ When speaking to Nexora via microphone or web bridge, you can execute both **Exe
 ## 🔑 Configuration
 
 Nexora automatically loads your `GEMINI_API_KEY` from the project's root [`.env`](file:///c:/Users/Sridhar's%20Nitro/Documents/jarvis%20lite/.env) file or [`nexora/config/api_keys.json`](file:///c:/Users/Sridhar's%20Nitro/Documents/jarvis%20lite/nexora/config/api_keys.json). Zero manual configuration required.
+

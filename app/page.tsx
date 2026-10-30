@@ -14,6 +14,10 @@ import {
   Check,
   Trash2,
   UserPlus,
+  Monitor,
+  Radio,
+  Eye,
+  CheckSquare,
 } from "lucide-react";
 import CommandCenter from "./components/CommandCenter";
 import BusinessMetrics from "./components/BusinessMetrics";
@@ -22,6 +26,10 @@ import MetaAdsManager from "./components/MetaAdsManager";
 import Subscriptions from "./components/Subscriptions";
 import SupportCenter from "./components/SupportCenter";
 import NexoraVoiceBridge from "./components/NexoraVoiceBridge";
+import DeviceManagerModal from "./components/DeviceManagerModal";
+import RealtimeTimelineModal, { LiveEventItem } from "./components/RealtimeTimelineModal";
+import ScreenIntelligenceModal from "./components/ScreenIntelligenceModal";
+import AutonomousTaskModal from "./components/AutonomousTaskModal";
 import { StatusDot } from "./components/ui";
 
 type CurrentUser = {
@@ -83,6 +91,16 @@ export default function Home() {
   const [loadingBriefing, setLoadingBriefing] = useState(false);
   const [briefingCopied, setBriefingCopied] = useState(false);
 
+  // Enterprise Modals State
+  const [showDeviceModal, setShowDeviceModal] = useState(false);
+  const [showEventsModal, setShowEventsModal] = useState(false);
+  const [showVisionModal, setShowVisionModal] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+
+  // Real-Time Event Stream State
+  const [liveEvents, setLiveEvents] = useState<LiveEventItem[]>([]);
+  const [sseConnected, setSseConnected] = useState(false);
+
   const fetchTeamMembers = useCallback(async () => {
     try {
       const res = await fetch("/api/team");
@@ -133,6 +151,41 @@ export default function Home() {
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
+
+  // Connect to Real-time SSE Gateway
+  useEffect(() => {
+    if (!currentUser?.organization?.id) return;
+
+    let es: EventSource | null = null;
+    try {
+      es = new EventSource("/api/events");
+      es.onopen = () => {
+        setSseConnected(true);
+      };
+      es.onerror = () => {
+        setSseConnected(false);
+      };
+      es.onmessage = (e) => {
+        try {
+          const parsed = JSON.parse(e.data);
+          if (parsed.type === "CONNECTED") return;
+          const liveItem: LiveEventItem = {
+            id: parsed.id || `evt-${Date.now()}`,
+            eventType: parsed.eventType || parsed.type || "EVENT",
+            payload: parsed.payload || parsed,
+            createdAt: parsed.createdAt || new Date().toISOString(),
+          };
+          setLiveEvents((prev) => [liveItem, ...prev.slice(0, 49)]);
+        } catch {}
+      };
+    } catch (err) {
+      console.error("SSE connection error", err);
+    }
+
+    return () => {
+      if (es) es.close();
+    };
+  }, [currentUser?.organization?.id]);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -290,6 +343,46 @@ export default function Home() {
             >
               <Download className="h-3.5 w-3.5 text-cyan-400" />
               {exporting ? "Generating CSV..." : "Export CSV"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowDeviceModal(true)}
+              title="Manage Paired Desktop Workstations"
+              className="flex items-center gap-1.5 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3.5 py-1.5 text-xs font-medium text-cyan-300 transition hover:bg-cyan-400/20"
+            >
+              <Monitor className="h-3.5 w-3.5" />
+              Desktop Devices
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowEventsModal(true)}
+              title="View Real-Time Transactional Outbox Events"
+              className="flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3.5 py-1.5 text-xs font-medium text-emerald-300 transition hover:bg-emerald-400/20"
+            >
+              <Radio className="h-3.5 w-3.5 animate-pulse" />
+              Live Events {liveEvents.length > 0 && `(${liveEvents.length})`}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowVisionModal(true)}
+              title="Inspect Desktop Screen Intelligence"
+              className="flex items-center gap-1.5 rounded-full border border-pink-400/30 bg-pink-400/10 px-3.5 py-1.5 text-xs font-medium text-pink-300 transition hover:bg-pink-400/20"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              Vision HUD
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowTaskModal(true)}
+              title="Inspect Autonomous Tasks & Approvals"
+              className="flex items-center gap-1.5 rounded-full border border-purple-400/30 bg-purple-400/10 px-3.5 py-1.5 text-xs font-medium text-purple-300 transition hover:bg-purple-400/20"
+            >
+              <CheckSquare className="h-3.5 w-3.5" />
+              Workflows
             </button>
 
             <button
@@ -614,6 +707,30 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* Enterprise Unified Modals */}
+      <DeviceManagerModal
+        isOpen={showDeviceModal}
+        onClose={() => setShowDeviceModal(false)}
+      />
+
+      <RealtimeTimelineModal
+        isOpen={showEventsModal}
+        onClose={() => setShowEventsModal(false)}
+        events={liveEvents}
+        isConnected={sseConnected}
+        onClear={() => setLiveEvents([])}
+      />
+
+      <ScreenIntelligenceModal
+        isOpen={showVisionModal}
+        onClose={() => setShowVisionModal(false)}
+      />
+
+      <AutonomousTaskModal
+        isOpen={showTaskModal}
+        onClose={() => setShowTaskModal(false)}
+      />
     </main>
   );
 }

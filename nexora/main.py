@@ -32,6 +32,8 @@ from actions.dev_agent        import dev_agent
 from actions.web_search       import web_search as web_search_action
 from actions.computer_control import computer_control
 from actions.jarvis_bridge    import (
+    jarvis_pair_device,
+    jarvis_check_health,
     jarvis_get_metrics,
     jarvis_get_tickets,
     jarvis_get_morning_briefing,
@@ -653,6 +655,13 @@ class JarvisLive:
                     )
                 )
                 result = r or "Done."
+            elif name == "jarvis_check_health":
+                result = await loop.run_in_executor(None, jarvis_check_health)
+
+            elif name == "jarvis_pair_device":
+                code = args.get("code", "")
+                result = await loop.run_in_executor(None, lambda: jarvis_pair_device(code))
+
             elif name == "jarvis_get_metrics":
                 result = await loop.run_in_executor(None, jarvis_get_metrics)
 
@@ -870,7 +879,38 @@ class JarvisLive:
             print("[JARVIS] 🔄 Reconnecting in 3s...")
             await asyncio.sleep(3)
 
+class HeadlessUI:
+    def __init__(self):
+        self.root = None
+
+    def write_log(self, text: str):
+        print(f"[NEXORA] {text}")
+
+    def wait_for_api_key(self):
+        pass
+
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Nexora Multimodal Windows Desktop AI Assistant")
+    parser.add_argument("--headless", action="store_true", help="Run daemon mode without Tkinter GUI")
+    parser.add_argument("--pair", type=str, help="Single-use Jarvis Lite pairing code")
+    parser.add_argument("--debug", action="store_true", help="Enable verbose debug logging")
+    args, _ = parser.parse_known_args()
+
+    if args.pair:
+        print(f"[NEXORA] 🔑 Attempting pairing with code: {args.pair}")
+        res = jarvis_pair_device(args.pair)
+        print(f"[NEXORA] {res}")
+
+    if args.headless:
+        print("[NEXORA] 🚀 Running in HEADLESS daemon mode...")
+        ui = HeadlessUI()
+        jarvis = JarvisLive(ui)
+        try:
+            asyncio.run(jarvis.run())
+        except KeyboardInterrupt:
+            print("\n🔴 Headless daemon stopped.")
+        return
     ui = JarvisUI("face.png")
 
     def runner():

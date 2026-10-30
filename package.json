@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "npx tsx scripts/verify-all.ts",
+    "dev:all": "node scripts/dev-all.js",
     "nexora": "cd nexora && python main.py",
     "db:push": "prisma db push",
     "db:studio": "prisma studio"

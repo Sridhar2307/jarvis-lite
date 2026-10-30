@@ -1,12 +1,91 @@
-import requests
+import os
+import sys
 import json
+import requests
+from pathlib import Path
+from typing import Optional, Dict, Any
 
-JARVIS_BASE_URL = "http://localhost:3000"
+JARVIS_BASE_URL = os.environ.get("JARVIS_BASE_URL", "http://localhost:3000")
+CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
+CREDENTIALS_FILE = CONFIG_DIR / "device_credentials.json"
+
+def _ensure_config_dir():
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+
+def load_credentials() -> Dict[str, Any]:
+    """Load cached agent device authentication credentials."""
+    _ensure_config_dir()
+    if CREDENTIALS_FILE.exists():
+        try:
+            with open(CREDENTIALS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def save_credentials(creds: Dict[str, Any]):
+    """Persist agent device authentication credentials."""
+    _ensure_config_dir()
+    with open(CREDENTIALS_FILE, "w", encoding="utf-8") as f:
+        json.dump(creds, f, indent=2)
+
+def get_auth_headers() -> Dict[str, str]:
+    """Return HTTP headers with device bearer token if paired."""
+    creds = load_credentials()
+    headers = {"Content-Type": "application/json"}
+    token = creds.get("accessToken")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
+
+def jarvis_pair_device(pairing_code: str, device_name: str = "Nexora Desktop Workstation") -> str:
+    """
+    Submit a single-use pairing code to Jarvis Lite to authenticate and link this Nexora desktop agent.
+    """
+    try:
+        url = f"{JARVIS_BASE_URL}/api/agent/pair"
+        payload = {
+            "code": pairing_code.strip(),
+            "deviceName": device_name,
+            "platform": "windows",
+            "osVersion": "Windows 11"
+        }
+        res = requests.post(url, json=payload, timeout=8)
+        if res.ok:
+            data = res.json()
+            creds = {
+                "deviceId": data.get("deviceId"),
+                "organizationId": data.get("organizationId"),
+                "deviceName": data.get("deviceName"),
+                "accessToken": data.get("accessToken"),
+                "refreshToken": data.get("refreshToken"),
+                "scopes": data.get("scopes", [])
+            }
+            save_credentials(creds)
+            return f"✅ Device successfully paired with Jarvis Lite! Device ID: {creds['deviceId']}"
+        else:
+            return f"❌ Pairing failed: {res.text}"
+    except Exception as e:
+        return f"❌ Error connecting to Jarvis Lite: {e}"
+
+def jarvis_check_health() -> str:
+    """Check connection status and token validity with Jarvis Lite."""
+    try:
+        url = f"{JARVIS_BASE_URL}/api/agent/health"
+        headers = get_auth_headers()
+        res = requests.get(url, headers=headers, timeout=5)
+        if res.ok:
+            data = res.json()
+            return f"Jarvis Lite Health: {data.get('status')}. Paired Device: {data.get('deviceName', 'Unknown')}"
+        return f"Jarvis Lite returned status code {res.status_code}"
+    except Exception as e:
+        return f"Unable to reach Jarvis Lite on {JARVIS_BASE_URL}: {e}"
 
 def jarvis_get_metrics() -> str:
     """Fetch live business metrics (MRR, ARR, active users, MTD revenue) from Jarvis Lite."""
     try:
-        res = requests.get(f"{JARVIS_BASE_URL}/api/metrics", timeout=5)
+        headers = get_auth_headers()
+        res = requests.get(f"{JARVIS_BASE_URL}/api/metrics", headers=headers, timeout=5)
         if res.ok:
             data = res.json().get("data", {})
             metrics = data.get("metrics", [])
@@ -19,7 +98,8 @@ def jarvis_get_metrics() -> str:
 def jarvis_get_tickets() -> str:
     """Fetch open customer support tickets from Jarvis Lite."""
     try:
-        res = requests.get(f"{JARVIS_BASE_URL}/api/support/tickets", timeout=5)
+        headers = get_auth_headers()
+        res = requests.get(f"{JARVIS_BASE_URL}/api/support/tickets", headers=headers, timeout=5)
         if res.ok:
             data = res.json().get("data", {})
             tickets = data.get("tickets", [])
@@ -34,7 +114,8 @@ def jarvis_get_tickets() -> str:
 def jarvis_get_morning_briefing() -> str:
     """Fetch the executive morning intelligence briefing from Jarvis Lite."""
     try:
-        res = requests.get(f"{JARVIS_BASE_URL}/api/reports/briefing", timeout=5)
+        headers = get_auth_headers()
+        res = requests.get(f"{JARVIS_BASE_URL}/api/reports/briefing", headers=headers, timeout=5)
         if res.ok:
             data = res.json().get("data", {}).get("briefing", {})
             kpis = data.get("kpis", {})
@@ -60,7 +141,8 @@ def jarvis_schedule_post(platform: str, content: str, time_string: str = "Schedu
             "scheduledTimeString": time_string,
             "status": "SCHEDULED"
         }
-        res = requests.post(f"{JARVIS_BASE_URL}/api/social/posts", json=payload, timeout=5)
+        headers = get_auth_headers()
+        res = requests.post(f"{JARVIS_BASE_URL}/api/social/posts", headers=headers, json=payload, timeout=5)
         if res.ok:
             return f"Successfully queued your post for {normalized_platform} in Jarvis Lite: '{content[:50]}...'"
         return f"Failed to queue post: {res.text}"
@@ -76,10 +158,28 @@ def jarvis_create_ticket(subject: str, requester_email: str, priority: str = "ME
             "priority": priority.upper() if priority.upper() in ["HIGH", "MEDIUM", "LOW"] else "MEDIUM",
             "status": "OPEN"
         }
-        res = requests.post(f"{JARVIS_BASE_URL}/api/support/tickets", json=payload, timeout=5)
+        headers = get_auth_headers()
+        res = requests.post(f"{JARVIS_BASE_URL}/api/support/tickets", headers=headers, json=payload, timeout=5)
         if res.ok:
             ticket = res.json().get("data", {})
             return f"Created support ticket {ticket.get('id')} for '{subject}' with priority {priority}."
         return "Failed to create ticket in Jarvis Lite."
     except Exception as e:
         return f"Failed to connect to Jarvis Lite. ({e})"
+
+def jarvis_upload_vision_screenshot(image_base64: str, focus_window: str = "Desktop") -> str:
+    """Upload a screenshot to Jarvis Lite Multimodal Vision Engine."""
+    try:
+        payload = {
+            "imageBase64": image_base64,
+            "focusWindow": focus_window,
+            "mimeType": "image/png"
+        }
+        headers = get_auth_headers()
+        res = requests.post(f"{JARVIS_BASE_URL}/api/agent/vision", headers=headers, json=payload, timeout=15)
+        if res.ok:
+            session = res.json().get("session", {})
+            return f"Screen analyzed by Multimodal AI: {session.get('title')}. Analysis:\n{session.get('analysis')}"
+        return f"Vision upload failed: {res.text}"
+    except Exception as e:
+        return f"Error sending vision data to Jarvis Lite: {e}"

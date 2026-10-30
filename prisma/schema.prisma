@@ -38,6 +38,12 @@ model Organization {
   conversations          Conversation[]
   integrationCredentials IntegrationCredential[]
   activityLogs           ActivityLog[]
+  agentDevices           AgentDevice[]
+  agentPairingCodes      AgentPairingCode[]
+  agentTasks             AgentTask[]
+  visionSessions         VisionSession[]
+  outboxEvents           OutboxEvent[]
+  aiUsageLogs            AIUsageLog[]
 }
 
 model OrganizationMember {
@@ -234,4 +240,127 @@ model ActivityLog {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
+
+model AgentDevice {
+  id             String             @id @default(cuid())
+  organizationId String
+  deviceName     String
+  platform       String             @default("windows")
+  osVersion      String?
+  ipAddress      String?
+  status         String             @default("ONLINE") // ONLINE, OFFLINE, PAIRED, REVOKED
+  lastSeenAt     DateTime           @default(now())
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  credentials    AgentCredential[]
+  permissions    DevicePermission[]
+  tasks          AgentTask[]
+  visionSessions VisionSession[]
+}
+
+model AgentCredential {
+  id               String      @id @default(cuid())
+  deviceId         String
+  tokenHash        String
+  refreshTokenHash String
+  scopes           String      @default("metrics:read,tickets:read,tickets:write,social:read,social:write,desktop:control,vision:upload")
+  expiresAt        DateTime
+  createdAt        DateTime    @default(now())
+  device           AgentDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+}
+
+model AgentPairingCode {
+  id             String       @id @default(cuid())
+  code           String       @unique
+  organizationId String
+  userId         String
+  expiresAt      DateTime
+  used           Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+model DevicePermission {
+  id        String      @id @default(cuid())
+  deviceId  String
+  scope     String
+  granted   Boolean     @default(true)
+  updatedAt DateTime    @updatedAt
+  device    AgentDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@unique([deviceId, scope])
+}
+
+model AgentTask {
+  id             String          @id @default(cuid())
+  organizationId String
+  deviceId       String?
+  title          String
+  goal           String
+  status         String          @default("QUEUED") // QUEUED, RUNNING, PAUSED, COMPLETED, FAILED, CANCELLED
+  priority       String          @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  riskLevel      String          @default("LOW") // LOW, MEDIUM, HIGH
+  confirmed      Boolean         @default(false)
+  result         String?
+  error          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  device         AgentDevice?    @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  steps          AgentTaskStep[]
+}
+
+model AgentTaskStep {
+  id             String    @id @default(cuid())
+  taskId         String
+  stepNumber     Int
+  toolName       String
+  parametersJson String?
+  outputJson     String?
+  status         String    @default("PENDING") // PENDING, RUNNING, COMPLETED, FAILED, SKIPPED
+  error          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  task           AgentTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
+
+model VisionSession {
+  id             String       @id @default(cuid())
+  organizationId String
+  deviceId       String?
+  title          String       @default("Screen Analysis")
+  imagePath      String?
+  ocrText        String?
+  analysis       String?
+  status         String       @default("ANALYZED") // CAPTURED, PROCESSING, ANALYZED, FAILED
+  metadataJson   String?
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  device         AgentDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+}
+
+model OutboxEvent {
+  id             String       @id @default(cuid())
+  organizationId String
+  eventType      String // METRIC_UPDATED, TASK_COMPLETED, DEVICE_PAIRED, TICKET_CREATED, VISION_ANALYZED
+  payloadJson    String
+  status         String       @default("PENDING") // PENDING, PUBLISHED, FAILED
+  createdAt      DateTime     @default(now())
+  publishedAt    DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+model AIUsageLog {
+  id               String       @id @default(cuid())
+  organizationId   String
+  model            String
+  promptTokens     Int          @default(0)
+  completionTokens Int          @default(0)
+  latencyMs        Int          @default(0)
+  costUsd          Float        @default(0.0)
+  createdAt        DateTime     @default(now())
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
 
