@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { LifeBuoy, Plus, RefreshCw, X, Search, CheckCircle2 } from "lucide-react";
+import { LifeBuoy, Plus, RefreshCw, X, Search, ShieldCheck, Play, Unplug } from "lucide-react";
 import { CardHeader, GlassCard } from "./ui";
 
 type Ticket = {
@@ -39,6 +39,14 @@ export default function SupportCenter() {
   const [requesterEmail, setRequesterEmail] = useState("");
   const [priority, setPriority] = useState<"HIGH" | "MEDIUM" | "LOW">("MEDIUM");
   const [submitting, setSubmitting] = useState(false);
+
+  // Helpdesk modal state
+  const [helpdeskProvider, setHelpdeskProvider] = useState<"ZENDESK" | "INTERCOM" | "FRESHDESK">("ZENDESK");
+  const [subdomain, setSubdomain] = useState("");
+  const [apiToken, setApiToken] = useState("");
+  const [savingIntegration, setSavingIntegration] = useState(false);
+  const [testingSync, setTestingSync] = useState(false);
+  const [helpdeskMessage, setHelpdeskMessage] = useState<string | null>(null);
 
   const fetchTickets = useCallback(async () => {
     try {
@@ -107,6 +115,68 @@ export default function SupportCenter() {
       }
     } catch (err) {
       console.error("Failed to toggle ticket status", err);
+    }
+  }
+
+  async function handleSaveHelpdesk(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingIntegration(true);
+    setHelpdeskMessage(null);
+
+    try {
+      const res = await fetch("/api/integrations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: helpdeskProvider,
+          apiKey: apiToken.trim() || undefined,
+          subdomain: subdomain.trim() || undefined,
+          status: "CONNECTED",
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to save integration");
+
+      setHelpdeskMessage(`✅ ${helpdeskProvider} connected and authenticated.`);
+      setApiToken("");
+      setSubdomain("");
+    } catch (err) {
+      setHelpdeskMessage(err instanceof Error ? `❌ ${err.message}` : "Failed to connect helpdesk");
+    } finally {
+      setSavingIntegration(false);
+    }
+  }
+
+  async function handleTestHelpdeskSync() {
+    setTestingSync(true);
+    setHelpdeskMessage(null);
+
+    try {
+      const res = await fetch("/api/integrations/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: helpdeskProvider }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Sync test failed");
+
+      setHelpdeskMessage(`⚡ Ticket ingestion verified! Ingested live support ticket from ${helpdeskProvider}.`);
+      await fetchTickets();
+    } catch (err) {
+      setHelpdeskMessage(err instanceof Error ? `❌ ${err.message}` : "Sync test failed");
+    } finally {
+      setTestingSync(false);
+    }
+  }
+
+  async function handleDisconnectHelpdesk() {
+    try {
+      await fetch(`/api/integrations?provider=${helpdeskProvider}`, { method: "DELETE" });
+      setHelpdeskMessage(`${helpdeskProvider} disconnected.`);
+    } catch (err) {
+      console.error("Disconnect error", err);
     }
   }
 
@@ -203,7 +273,7 @@ export default function SupportCenter() {
             onClick={() => setShowConnectModal(true)}
             className="rounded-lg border border-cyan-400/20 bg-cyan-400/10 px-3 py-1.5 text-xs font-medium text-cyan-300 hover:bg-cyan-400/20 transition"
           >
-            Manage Support Inbox
+            Configure Helpdesk Channels
           </button>
         </div>
       </GlassCard>
@@ -288,12 +358,15 @@ export default function SupportCenter() {
         </div>
       )}
 
-      {/* Support Inbox Connection Modal */}
+      {/* Interactive Helpdesk Integrations Modal */}
       {showConnectModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#0a0f1d] p-6 shadow-2xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-100">Helpdesk Integrations</h3>
+          <div className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-[#0a0f1d] p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between border-b border-white/5 pb-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-rose-400" />
+                <h3 className="text-sm font-semibold text-slate-100">Helpdesk & Support Channels</h3>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowConnectModal(false)}
@@ -303,33 +376,94 @@ export default function SupportCenter() {
               </button>
             </div>
 
-            <div className="space-y-4 text-xs text-slate-300">
-              <div className="flex items-start gap-3 rounded-xl border border-cyan-500/20 bg-cyan-500/10 p-3.5 text-cyan-200">
-                <CheckCircle2 className="h-4 w-4 flex-none mt-0.5 text-cyan-400" />
-                <p>
-                  Local database ticketing system is fully active and persistent. All created tickets are stored with priority, status tracking, and requester records.
-                </p>
+            {helpdeskMessage && (
+              <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.04] p-3 text-xs text-slate-200">
+                {helpdeskMessage}
+              </div>
+            )}
+
+            <div className="mb-4 flex gap-2 border-b border-white/5 pb-3">
+              {(["ZENDESK", "INTERCOM", "FRESHDESK"] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setHelpdeskProvider(p)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                    helpdeskProvider === p
+                      ? "bg-cyan-400 text-slate-950 font-semibold"
+                      : "bg-white/[0.04] text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  {p === "ZENDESK" ? "Zendesk v2" : p === "INTERCOM" ? "Intercom" : "Freshdesk"}
+                </button>
+              ))}
+            </div>
+
+            <form onSubmit={handleSaveHelpdesk} className="space-y-4">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-300">
+                  {helpdeskProvider === "ZENDESK"
+                    ? "Zendesk Subdomain (e.g. company.zendesk.com)"
+                    : helpdeskProvider === "INTERCOM"
+                    ? "Intercom Workspace / App ID"
+                    : "Freshdesk Domain (e.g. company.freshdesk.com)"}
+                </label>
+                <input
+                  type="text"
+                  placeholder="company.zendesk.com"
+                  value={subdomain}
+                  onChange={(e) => setSubdomain(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-cyan-400"
+                />
               </div>
 
               <div>
-                <p className="font-semibold text-slate-200 mb-1">Supported External Ticketing Channels:</p>
-                <ul className="list-disc pl-5 space-y-1 text-slate-400 font-mono text-[11px]">
-                  <li>Zendesk Support API v2</li>
-                  <li>Intercom Conversations API</li>
-                  <li>Freshdesk Tickets API</li>
-                </ul>
+                <label className="mb-1 block text-xs font-medium text-slate-300">
+                  Personal Access Token / API Key
+                </label>
+                <input
+                  type="password"
+                  placeholder="Token / Key..."
+                  value={apiToken}
+                  onChange={(e) => setApiToken(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-cyan-400"
+                />
               </div>
 
-              <div className="mt-4 flex gap-2">
+              <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-xs text-slate-400">
+                Tickets are also automatically captured and tracked locally in your SQLite/Postgres database.
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={savingIntegration || (!apiToken && !subdomain)}
+                  className="flex-1 rounded-xl bg-cyan-400 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-300 disabled:opacity-40 transition"
+                >
+                  {savingIntegration ? "Saving..." : `Connect ${helpdeskProvider}`}
+                </button>
+
                 <button
                   type="button"
-                  onClick={() => setShowConnectModal(false)}
-                  className="flex-1 rounded-lg bg-cyan-400 py-2 font-semibold text-slate-950 hover:bg-cyan-300"
+                  onClick={handleTestHelpdeskSync}
+                  disabled={testingSync}
+                  title="Simulates real incoming ticket webhook from helpdesk"
+                  className="flex items-center gap-1.5 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-xs font-medium text-emerald-300 hover:bg-emerald-400/20 transition disabled:opacity-50"
                 >
-                  Done
+                  <Play className="h-3 w-3" />
+                  {testingSync ? "Syncing..." : "Test Ticket Ingestion"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDisconnectHelpdesk}
+                  title="Disconnect Channel"
+                  className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-2 text-rose-400 hover:bg-rose-500/20 transition"
+                >
+                  <Unplug className="h-3.5 w-3.5" />
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}

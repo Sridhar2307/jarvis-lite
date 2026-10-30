@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Megaphone, RefreshCw, X, ShieldAlert } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { Megaphone, RefreshCw, X, ShieldAlert, Play, Unplug } from "lucide-react";
 import { CardHeader, GlassCard } from "./ui";
 
 type Campaign = {
@@ -28,11 +28,15 @@ export default function MetaAdsManager() {
   const [loading, setLoading] = useState(true);
   const [showConnectModal, setShowConnectModal] = useState(false);
 
-  useEffect(() => {
-    fetchAds();
-  }, []);
+  // Form inputs
+  const [appId, setAppId] = useState("");
+  const [appSecret, setAppSecret] = useState("");
+  const [adAccountId, setAdAccountId] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
-  async function fetchAds() {
+  const fetchAds = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch("/api/ads");
@@ -47,6 +51,74 @@ export default function MetaAdsManager() {
       console.error("Failed to load Meta ads data", err);
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAds();
+  }, [fetchAds]);
+
+  async function handleSaveMeta(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/integrations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "META",
+          apiKey: appSecret.trim() || undefined,
+          adAccountId: adAccountId.trim() || undefined,
+          subdomain: appId.trim() || undefined,
+          status: "CONNECTED",
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to save Meta credentials");
+
+      setMessage("✅ Meta Marketing credentials verified and connected.");
+      setAppSecret("");
+      await fetchAds();
+    } catch (err) {
+      setMessage(err instanceof Error ? `❌ ${err.message}` : "Failed to connect Meta Ads");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleTestMeta() {
+    setTesting(true);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/integrations/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: "META" }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Handshake test failed");
+
+      setMessage("⚡ Meta Graph API handshake verified successfully!");
+      await fetchAds();
+    } catch (err) {
+      setMessage(err instanceof Error ? `❌ ${err.message}` : "Test execution failed");
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  async function handleDisconnect() {
+    try {
+      await fetch("/api/integrations?provider=META", { method: "DELETE" });
+      setMessage("Meta Ads disconnected.");
+      await fetchAds();
+    } catch (err) {
+      console.error("Disconnect error", err);
     }
   }
 
@@ -153,17 +225,20 @@ export default function MetaAdsManager() {
             onClick={() => setShowConnectModal(true)}
             className="rounded-lg border border-cyan-400/20 bg-cyan-400/10 px-3 py-1.5 text-xs font-medium text-cyan-300 hover:bg-cyan-400/20 transition"
           >
-            {account?.status === "CONNECTED" ? "Manage Integration" : "Connect Meta Ads"}
+            Configure Meta Marketing
           </button>
         </div>
       </GlassCard>
 
-      {/* Meta OAuth Modal */}
+      {/* Meta OAuth / Credential Modal */}
       {showConnectModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#0a0f1d] p-6 shadow-2xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-100">Meta Marketing API Connection</h3>
+            <div className="mb-4 flex items-center justify-between border-b border-white/5 pb-3">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="h-4 w-4 text-violet-400" />
+                <h3 className="text-sm font-semibold text-slate-100">Meta Marketing API Connection</h3>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowConnectModal(false)}
@@ -173,45 +248,84 @@ export default function MetaAdsManager() {
               </button>
             </div>
 
-            <div className="space-y-4 text-xs text-slate-300">
-              <div className="flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3.5 text-amber-200">
-                <ShieldAlert className="h-4 w-4 flex-none mt-0.5 text-amber-400" />
-                <p>
-                  Connecting to live production ad accounts requires valid <code className="text-amber-300">META_APP_ID</code> and <code className="text-amber-300">META_APP_SECRET</code> registered with Meta Developer Portal.
-                </p>
+            {message && (
+              <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.04] p-3 text-xs text-slate-200">
+                {message}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveMeta} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  Meta App ID
+                </label>
+                <input
+                  type="text"
+                  placeholder="123456789012345"
+                  value={appId}
+                  onChange={(e) => setAppId(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-cyan-400"
+                />
               </div>
 
               <div>
-                <p className="font-semibold text-slate-200 mb-1">Required Permissions:</p>
-                <ul className="list-disc pl-5 space-y-1 text-slate-400 font-mono text-[11px]">
-                  <li>ads_read</li>
-                  <li>read_insights</li>
-                  <li>business_management</li>
-                </ul>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  Meta App Secret
+                </label>
+                <input
+                  type="password"
+                  placeholder="App Secret..."
+                  value={appSecret}
+                  onChange={(e) => setAppSecret(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-cyan-400"
+                />
               </div>
 
-              <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-[11px] text-slate-400">
-                Current status: <span className="font-mono text-cyan-400">{account?.status || "DISCONNECTED"}</span>.
-                Configured redirect URI: <code className="text-slate-300">/api/integrations/meta/callback</code>
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  Target Ad Account ID (act_...)
+                </label>
+                <input
+                  type="text"
+                  placeholder="act_123456789"
+                  value={adAccountId}
+                  onChange={(e) => setAdAccountId(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-cyan-400"
+                />
               </div>
 
-              <div className="mt-4 flex gap-2">
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={saving || (!appId && !appSecret && !adAccountId)}
+                  className="flex-1 rounded-xl bg-cyan-400 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-300 disabled:opacity-40 transition"
+                >
+                  {saving ? "Saving..." : "Save Meta Credentials"}
+                </button>
+
                 <button
                   type="button"
-                  onClick={() => setShowConnectModal(false)}
-                  className="flex-1 rounded-lg border border-white/10 py-2 font-medium text-slate-400 hover:bg-white/5"
+                  onClick={handleTestMeta}
+                  disabled={testing}
+                  title="Tests API handshake"
+                  className="flex items-center gap-1.5 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-xs font-medium text-emerald-300 hover:bg-emerald-400/20 transition disabled:opacity-50"
                 >
-                  Close
+                  <Play className="h-3 w-3" />
+                  {testing ? "Testing..." : "Verify Handshake"}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setShowConnectModal(false)}
-                  className="flex-1 rounded-lg bg-cyan-400 py-2 font-semibold text-slate-950 hover:bg-cyan-300"
-                >
-                  Confirm Configuration
-                </button>
+
+                {account?.status === "CONNECTED" && (
+                  <button
+                    type="button"
+                    onClick={handleDisconnect}
+                    title="Disconnect Meta"
+                    className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-2 text-rose-400 hover:bg-rose-500/20 transition"
+                  >
+                    <Unplug className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}

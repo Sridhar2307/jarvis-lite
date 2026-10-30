@@ -73,3 +73,13 @@ export const adCampaignUpdateSchema = z.object({
   ctr: z.number().nonnegative().optional(),
 });
 
+export const saveIntegrationSchema = z.object({
+  provider: z.enum(["STRIPE", "REVENUECAT", "ZENDESK", "INTERCOM", "FRESHDESK", "META", "OPENAI"]),
+  apiKey: z.string().min(1, "API key or token is required").optional(),
+  webhookSecret: z.string().optional(),
+  subdomain: z.string().optional(),
+  adAccountId: z.string().optional(),
+  status: z.enum(["CONNECTED", "DISCONNECTED"]).default("CONNECTED"),
+});
+
+
