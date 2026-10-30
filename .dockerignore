@@ -12,3 +12,4 @@ dev.db-journal
 .env.production
 .DS_Store
 *.md
+

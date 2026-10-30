@@ -54,3 +54,4 @@ npx prisma db push
 ```
 
 All 17 models, indexes, cascading relations, and foreign keys will be created instantly in PostgreSQL!
+
