@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Sparkles, ArrowUp } from "lucide-react";
+import { Sparkles, ArrowUp, RefreshCw, AlertCircle } from "lucide-react";
 import { CardHeader, GlassCard, StatusDot } from "./ui";
 
 type Message = {
@@ -11,88 +11,98 @@ type Message = {
   time: string;
 };
 
-const seedMessages: Message[] = [
-  {
-    id: "m1",
-    role: "ai",
-    text: "Morning briefing: MRR is up 4.2% week-over-week, 3 support tickets need attention, and your 2:00 PM Instagram post is queued and ready.",
-    time: "8:02 AM",
-  },
-  {
-    id: "m2",
-    role: "user",
-    text: "How did the ad campaigns perform yesterday?",
-    time: "8:05 AM",
-  },
-  {
-    id: "m3",
-    role: "ai",
-    text: "Meta Ads spent $284 across 3 campaigns with a blended ROAS of 3.1x. \"Retargeting — Cart Abandoners\" was the top performer at 4.8x.",
-    time: "8:05 AM",
-  },
-  {
-    id: "m4",
-    role: "user",
-    text: "Draft a LinkedIn post about our new onboarding flow.",
-    time: "8:11 AM",
-  },
-  {
-    id: "m5",
-    role: "ai",
-    text: "Drafted and added to your Social Media Hub as a scheduled post for tomorrow at 9:00 AM. Want me to adjust the tone?",
-    time: "8:11 AM",
-  },
-];
-
-const cannedReplies = [
-  "Got it — I've logged that and will factor it into today's briefing.",
-  "Noted. I'll keep an eye on that and flag anything unusual.",
-  "Done. You can review the details in the relevant panel above.",
-  "Understood. I'll pull the latest numbers and follow up shortly.",
-];
-
 export default function CommandCenter() {
-  const [messages, setMessages] = useState<Message[]>(seedMessages);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const replyIndex = useRef(0);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+    fetchHistory();
+  }, []);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, thinking]);
 
-  const timeNow = () =>
-    new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  async function fetchHistory() {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch("/api/ai/chat");
+      if (!res.ok) {
+        throw new Error("Unable to connect to AI command channel");
+      }
+      const data = await res.json();
+      if (data.success && data.data?.messages) {
+        setMessages(data.data.messages);
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to load conversation history");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  function handleSend() {
+  async function handleSend() {
     const trimmed = input.trim();
-    if (!trimmed) return;
+    if (!trimmed || thinking) return;
 
-    const userMsg: Message = {
-      id: crypto.randomUUID(),
+    const optimisticId = crypto.randomUUID();
+    const now = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
+    // Optimistically show user message
+    const optimisticUserMsg: Message = {
+      id: optimisticId,
       role: "user",
       text: trimmed,
-      time: timeNow(),
+      time: now,
     };
-    setMessages((prev) => [...prev, userMsg]);
+
+    setMessages((prev) => [...prev, optimisticUserMsg]);
     setInput("");
     setThinking(true);
+    setError(null);
 
-    window.setTimeout(() => {
-      const reply = cannedReplies[replyIndex.current % cannedReplies.length];
-      replyIndex.current += 1;
+    try {
+      const res = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: trimmed }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Failed to receive AI intelligence");
+      }
+
+      const aiMsg = json.data.aiMessage;
+      setMessages((prev) => [
+        ...prev.filter((m) => m.id !== optimisticId),
+        json.data.userMessage,
+        aiMsg,
+      ]);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : "Error querying AI engine";
+      setError(errMsg);
       setMessages((prev) => [
         ...prev,
         {
           id: crypto.randomUUID(),
           role: "ai",
-          text: reply,
-          time: timeNow(),
+          text: `⚠️ System Notice: ${errMsg}. Check database connectivity or API keys.`,
+          time: now,
         },
       ]);
+    } finally {
       setThinking(false);
-    }, 1100);
+    }
   }
 
   return (
@@ -101,12 +111,22 @@ export default function CommandCenter() {
         <CardHeader
           icon={<Sparkles className="h-4 w-4" />}
           title="AI Command Center"
-          subtitle="Ask Jarvis anything about your business"
+          subtitle="Grounded co-pilot backed by database intelligence"
           right={
-            <span className="hidden items-center gap-1.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-emerald-300 sm:inline-flex">
-              <StatusDot tone="emerald" />
-              Online
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={fetchHistory}
+                title="Reload history"
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-white/5 hover:text-slate-200 transition"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+              </button>
+              <span className="hidden items-center gap-1.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-emerald-300 sm:inline-flex">
+                <StatusDot tone="emerald" />
+                Live Co-Pilot
+              </span>
+            </div>
           }
         />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px overflow-hidden">
@@ -118,6 +138,12 @@ export default function CommandCenter() {
         ref={scrollRef}
         className="hud-scroll flex-1 space-y-4 overflow-y-auto px-5 py-5"
       >
+        {loading && messages.length === 0 ? (
+          <div className="flex h-full items-center justify-center text-xs text-slate-500">
+            Establishing secure encrypted neural link...
+          </div>
+        ) : null}
+
         {messages.map((m) => (
           <div
             key={m.id}
@@ -130,7 +156,7 @@ export default function CommandCenter() {
                   : "rounded-bl-sm bg-white/[0.05] text-slate-300 ring-1 ring-white/10"
               }`}
             >
-              <p>{m.text}</p>
+              <p className="whitespace-pre-wrap">{m.text}</p>
               <p
                 className={`mt-1.5 font-mono text-[10px] tracking-wide ${
                   m.role === "user" ? "text-cyan-200/50" : "text-slate-500"
@@ -144,14 +170,22 @@ export default function CommandCenter() {
 
         {thinking && (
           <div className="flex justify-start">
-            <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm bg-white/[0.05] px-4 py-3 ring-1 ring-white/10">
-              <span className="h-1.5 w-1.5 animate-blink rounded-full bg-slate-400 [animation-delay:0ms]" />
-              <span className="h-1.5 w-1.5 animate-blink rounded-full bg-slate-400 [animation-delay:200ms]" />
-              <span className="h-1.5 w-1.5 animate-blink rounded-full bg-slate-400 [animation-delay:400ms]" />
+            <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-sm bg-white/[0.05] px-4 py-3 ring-1 ring-white/10">
+              <span className="h-1.5 w-1.5 animate-blink rounded-full bg-cyan-400 [animation-delay:0ms]" />
+              <span className="h-1.5 w-1.5 animate-blink rounded-full bg-cyan-400 [animation-delay:200ms]" />
+              <span className="h-1.5 w-1.5 animate-blink rounded-full bg-cyan-400 [animation-delay:400ms]" />
+              <span className="ml-1 text-[11px] text-slate-400 font-mono">Analyzing DB metrics...</span>
             </div>
           </div>
         )}
       </div>
+
+      {error && (
+        <div className="mx-4 mb-2 flex items-center gap-2 rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-1.5 text-xs text-rose-300">
+          <AlertCircle className="h-3.5 w-3.5 flex-none" />
+          <span className="truncate">{error}</span>
+        </div>
+      )}
 
       <div className="border-t border-white/5 p-4">
         <div className="flex items-end gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2 focus-within:border-cyan-400/40 focus-within:ring-1 focus-within:ring-cyan-400/30">
@@ -165,13 +199,13 @@ export default function CommandCenter() {
               }
             }}
             rows={1}
-            placeholder="Message Jarvis…"
+            placeholder="Ask Jarvis about verified MRR, tickets, ad ROAS, or operations..."
             className="max-h-28 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
           />
           <button
             type="button"
             onClick={handleSend}
-            disabled={!input.trim()}
+            disabled={!input.trim() || thinking}
             aria-label="Send message"
             className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-cyan-400/90 text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-slate-500"
           >

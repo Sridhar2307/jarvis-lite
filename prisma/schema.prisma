@@ -1,0 +1,237 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id             String               @id @default(cuid())
+  email          String               @unique
+  passwordHash   String
+  name           String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  memberships    OrganizationMember[]
+  activityLogs   ActivityLog[]
+  assignedTickets SupportTicket[]
+  ticketNotes    TicketNote[]
+}
+
+model Organization {
+  id                     String                  @id @default(cuid())
+  name                   String
+  slug                   String                  @unique
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  members                OrganizationMember[]
+  revenueRecords         RevenueRecord[]
+  businessMetrics        BusinessMetric[]
+  socialAccounts         SocialAccount[]
+  socialPosts            SocialPost[]
+  adAccounts             AdAccount[]
+  subscriptionPlans      SubscriptionPlan[]
+  subscribers            Subscriber[]
+  supportTickets         SupportTicket[]
+  conversations          Conversation[]
+  integrationCredentials IntegrationCredential[]
+  activityLogs           ActivityLog[]
+}
+
+model OrganizationMember {
+  id             String       @id @default(cuid())
+  organizationId String
+  userId         String
+  role           String       @default("OWNER") // OWNER, ADMIN, MANAGER, VIEWER
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+}
+
+model RevenueRecord {
+  id             String       @id @default(cuid())
+  organizationId String
+  amount         Float
+  currency       String       @default("USD")
+  source         String       @default("MANUAL") // STRIPE, REVENUECAT, MANUAL
+  category       String       @default("SUBSCRIPTION") // SUBSCRIPTION, ONE_TIME, AD_REVENUE
+  recordedAt     DateTime     @default(now())
+  notes          String?
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+model BusinessMetric {
+  id             String       @id @default(cuid())
+  organizationId String
+  metricKey      String       // MRR, ARR, ACTIVE_USERS, REVENUE_MTD
+  value          Float
+  delta          Float        @default(0.0)
+  period         String       @default("MONTHLY")
+  recordedAt     DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+model SocialAccount {
+  id             String       @id @default(cuid())
+  organizationId String
+  platform       String       // INSTAGRAM, X, LINKEDIN
+  accountName    String
+  status         String       @default("DISCONNECTED") // CONNECTED, DISCONNECTED
+  connectedAt    DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  posts          SocialPost[]
+}
+
+model SocialPost {
+  id                  String         @id @default(cuid())
+  organizationId      String
+  socialAccountId     String?
+  platform            String         // Instagram, X, LinkedIn
+  content             String
+  scheduledFor        DateTime?
+  scheduledTimeString String?
+  status              String         @default("DRAFT") // DRAFT, SCHEDULED, PUBLISHED, FAILED
+  errorMessage        String?
+  publishedAt         DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  organization        Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  socialAccount       SocialAccount? @relation(fields: [socialAccountId], references: [id], onDelete: SetNull)
+}
+
+model AdAccount {
+  id             String       @id @default(cuid())
+  organizationId String
+  platform       String       @default("META")
+  accountName    String       @default("Meta Ads")
+  status         String       @default("DISCONNECTED") // CONNECTED, DISCONNECTED
+  currency       String       @default("USD")
+  totalSpend     Float        @default(0.0)
+  avgCtr         Float        @default(0.0)
+  blendedRoas    Float        @default(0.0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  campaigns      AdCampaign[]
+}
+
+model AdCampaign {
+  id          String    @id @default(cuid())
+  adAccountId String
+  name        String
+  status      String    @default("ACTIVE") // ACTIVE, PAUSED, ARCHIVED
+  spend       Float     @default(0.0)
+  impressions Int       @default(0)
+  clicks      Int       @default(0)
+  ctr         Float     @default(0.0)
+  roas        Float     @default(0.0)
+  conversions Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  adAccount   AdAccount @relation(fields: [adAccountId], references: [id], onDelete: Cascade)
+}
+
+model SubscriptionPlan {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String       // Starter, Pro, Enterprise
+  price          Float
+  interval       String       @default("month")
+  active         Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscribers    Subscriber[]
+}
+
+model Subscriber {
+  id             String           @id @default(cuid())
+  organizationId String
+  planId         String
+  customerEmail  String
+  status         String           @default("ACTIVE") // ACTIVE, CANCELLED, PAST_DUE
+  startDate      DateTime         @default(now())
+  renewalDate    DateTime?
+  cancelledAt    DateTime?
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan           SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+}
+
+model SupportTicket {
+  id               String       @id @default(cuid())
+  ticketNumber     Int          @default(1001)
+  organizationId   String
+  subject          String
+  requesterEmail   String
+  priority         String       @default("MEDIUM") // HIGH, MEDIUM, LOW
+  status           String       @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+  assignedToUserId String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignedTo       User?        @relation(fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  notes            TicketNote[]
+}
+
+model TicketNote {
+  id         String        @id @default(cuid())
+  ticketId   String
+  authorId   String
+  content    String
+  isInternal Boolean       @default(true)
+  createdAt  DateTime      @default(now())
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author     User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+model Conversation {
+  id             String       @id @default(cuid())
+  organizationId String
+  title          String       @default("Jarvis Session")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  messages       Message[]
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  role           String       // user, ai, system
+  text           String
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+model IntegrationCredential {
+  id             String       @id @default(cuid())
+  organizationId String
+  provider       String       // OPENAI, META, STRIPE, REVENUECAT, ZENDESK, TWITTER, LINKEDIN
+  status         String       @default("DISCONNECTED") // CONNECTED, DISCONNECTED, ERROR
+  apiKeyMasked   String?
+  metadataJson   String?
+  lastSyncedAt   DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, provider])
+}
+
+model ActivityLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  userId         String?
+  action         String
+  entityType     String
+  entityId       String?
+  details        String?
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+

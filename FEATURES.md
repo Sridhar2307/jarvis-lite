@@ -1,161 +1,152 @@
-# ⚡ Jarvis Lite — Comprehensive Features & Capabilities
+# ⚡ Jarvis Lite — Comprehensive Features & Architecture
 
-**Jarvis Lite** is a centralized executive command center and business dashboard built with Next.js 14, React 18, TypeScript, and Tailwind CSS. It features a futuristic dark-mode HUD (Heads-Up Display) with glassmorphism visual styling, real-time responsive widgets, and an AI conversational interface.
+**Jarvis Lite** is a fully functional, production-ready AI executive command center and business operations platform built on **Next.js 14**, **React 18**, **TypeScript 5**, **Prisma ORM**, and **Tailwind CSS**. It combines a futuristic dark HUD glassmorphism interface with a verified server-side backend, database persistence, multi-tenant organization isolation, authentication, and live API integrations.
 
 ---
 
 ## 📋 Table of Contents
-1. [Overview & Architecture](#-overview--architecture)
-2. [Current Out-of-the-Box Features](#-current-out-of-the-box-features)
+1. [Architecture & Stack](#-architecture--stack)
+2. [Security & Authentication](#-security--authentication)
+3. [The 6 Core Production Modules](#-the-6-core-production-modules)
    - [1. AI Command Center](#1-ai-command-center)
-   - [2. Business Metrics Monitoring](#2-business-metrics-monitoring)
+   - [2. Business Metrics & Revenue](#2-business-metrics--revenue)
    - [3. Social Media Hub](#3-social-media-hub)
    - [4. Meta Ads Manager](#4-meta-ads-manager)
-   - [5. Subscriptions & Recurring Revenue](#5-subscriptions--recurring-revenue)
-   - [6. Support Center (Ticket Inbox)](#6-support-center-ticket-inbox)
-   - [7. Design System & HUD Glassmorphism](#7-design-system--hud-glassmorphism)
-3. [Running & Developing Jarvis Lite](#-running--developing-jarvis-lite)
-4. [Production & Deployment](#-production--deployment)
-5. [Future Roadmap & Live API Integrations](#-future-roadmap--live-api-integrations)
+   - [5. Subscriptions Management](#5-subscriptions-management)
+   - [6. Customer Support Center](#6-customer-support-center)
+4. [Database Models (Prisma ORM)](#-database-models-prisma-orm)
+5. [API Routes Specification](#-api-routes-specification)
+6. [Automated Verification & Testing](#-automated-verification--testing)
+7. [Running & Deployment](#-running--deployment)
 
 ---
 
-## 🏗 Overview & Architecture
+## 🏗 Architecture & Stack
 
-- **Framework**: [Next.js 14](https://nextjs.org/) using the **App Router** (`app/` directory).
-- **Language**: [TypeScript 5](https://www.typescriptlang.org/) for strict type safety.
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/) with custom extended utilities for glassmorphism, ambient glows, and scanline animations.
-- **Icons**: [Lucide React](https://lucide.dev/) for crisp, modern icons.
-- **Typography**: [Geist Sans & Geist Mono](https://vercel.com/font) variable fonts.
-- **Layout**: 12-column adaptive CSS Grid responsive across mobile devices, tablets, and wide desktop displays.
+- **Framework**: Next.js 14.2 (App Router with Server & Client components).
+- **Language**: TypeScript 5 with strict typing and Zod schemas for all request validations.
+- **ORM & Database**: Prisma ORM with SQLite (zero-config, high-performance local persistence in `dev.db`) and instant PostgreSQL compatibility for production.
+- **Authentication**: Stateless, Edge-compatible JWT authentication signed with HMAC-SHA256 via `jose`, with passwords hashed using `bcryptjs` (cost factor 12) stored in `HttpOnly` secure cookies.
+- **Multi-Tenancy**: Organization-level isolation on every query and mutation. Users can only access records belonging to their authorized organization.
+- **UI & Design**: Frosted glassmorphism (`backdrop-blur-xl`), animated cyber scanlines, status dots, custom HUD scrollbars, and accessible dialogs.
 
 ---
 
-## 🚀 Current Out-of-the-Box Features
+## 🔒 Security & Authentication
+
+- **Route Protection**: Next.js `middleware.ts` intercepts and validates JWT tokens on all protected routes (`/`, `/api/*`).
+- **Input Sanitization & Validation**: 100% of mutation payloads are parsed against Zod schemas in `lib/validations.ts`.
+- **Credential Protection**: Integration API keys and secrets are strictly server-side; passwords are never stored in plain text.
+- **CSRF & Cookie Hardening**: Session cookies use `SameSite: Lax`, `HttpOnly`, and secure flags in production.
+
+---
+
+## 🚀 The 6 Core Production Modules
 
 ### 1. AI Command Center
-Located prominently at the top-left of the dashboard (`app/components/CommandCenter.tsx`):
-- **Conversational Chat Interface**: An interactive chat console simulating an executive AI business co-pilot.
-- **Real-time Messaging**: Type any query or command, press `Enter` (or click the send button), and receive simulated AI responses.
-- **Interactive Thinking Indicator**: Animated three-dot pulse simulating AI inference/reasoning latency.
-- **Morning Briefing Logs**: Pre-seeded with operational briefings summarizing MRR changes, priority tickets, and queued marketing content.
-- **HUD Laser Scan Animation**: A sweeping cyan laser scanline integrated into the card header.
-- **Auto-Scrolling Feed**: Automatically scrolls to the newest message upon receiving new updates.
+- **Component**: [`app/components/CommandCenter.tsx`](file:///c:/Users/Sridhar's%20Nitro/Documents/jarvis%20lite/app/components/CommandCenter.tsx)
+- **API Endpoint**: `POST /api/ai/chat`, `GET /api/ai/chat`
+- **Capabilities**:
+  - Grounded executive AI co-pilot that pulls real-time facts directly from your database (MRR, open tickets, queued social posts, ad ROAS).
+  - Prevents financial hallucination by enforcing database-backed ground truth.
+  - Full conversation thread persistence in the `Conversation` and `Message` database tables.
+  - Supports OpenAI `gpt-4o-mini` when `OPENAI_API_KEY` is provided; automatically falls back to an offline rule-based business intelligence engine when unconfigured.
 
-### 2. Business Metrics Monitoring
-Located at the top-right of the dashboard (`app/components/BusinessMetrics.tsx`):
-- **Snapshot Across All Revenue Streams**: Key financial and user metrics summarized at a glance.
-- **Metric Cards**:
-  - **MRR (Monthly Recurring Revenue)**: Displays current recurring revenue (e.g., `$48,200`).
-  - **ARR (Annual Recurring Revenue)**: Displays annualized recurring revenue (e.g., `$578,400`).
-  - **Active Users**: Current user base count (e.g., `12,480`).
-  - **Revenue (MTD)**: Month-to-date gross revenue (e.g., `$61,900`).
-- **Trend Indicators (`TrendPill`)**: Color-coded percentage delta badges (green `▲` for positive growth, red `▼` for declines) reflecting week-over-week performance.
+### 2. Business Metrics & Revenue
+- **Component**: [`app/components/BusinessMetrics.tsx`](file:///c:/Users/Sridhar's%20Nitro/Documents/jarvis%20lite/app/components/BusinessMetrics.tsx)
+- **API Endpoint**: `GET /api/metrics`, `POST /api/metrics`
+- **Capabilities**:
+  - Dynamically calculates **MRR** (Monthly Recurring Revenue), **ARR** (Annual Recurring Revenue), **Active Users**, and **Revenue MTD** from database `RevenueRecord` and `Subscriber` tables.
+  - Interactive **"+ Add Record"** modal to log real cash transactions across Stripe, RevenueCat, or manual bank wire invoices.
+  - Honest empty states when a brand new organization has zero records.
 
 ### 3. Social Media Hub
-Located in the middle-left grid (`app/components/SocialMediaHub.tsx`):
-- **Cross-Platform Scheduling**: Manage queued and drafted posts across major channels:
-  - **Instagram** (Fuchsia brand styling)
-  - **X / Twitter** (Sky blue brand styling)
-  - **LinkedIn** (Blue brand styling)
-- **Live Post Composer**:
-  - Multi-line text editor with real-time 280-character counter (`0/280`).
-  - Platform selector dropdown.
-  - Custom scheduling field (e.g., `Fri, 10:00 AM`, `Tomorrow, 9:00 AM`).
-  - Single-click **"Schedule post"** button that immediately prepends the post to the active queue.
-- **Queue & Draft Viewer**: Displays queued items with time tags and `Scheduled` or `Draft` status tags.
+- **Component**: [`app/components/SocialMediaHub.tsx`](file:///c:/Users/Sridhar's%20Nitro/Documents/jarvis%20lite/app/components/SocialMediaHub.tsx)
+- **API Endpoint**: `GET /api/social/posts`, `POST /api/social/posts`, `DELETE /api/social/posts/[id]`
+- **Capabilities**:
+  - Full CRUD operations with database persistence across Instagram, X (Twitter), and LinkedIn.
+  - Live character limit counter (280 characters).
+  - Schedule posts into the database queue with target timestamps.
+  - Single-click deletion and real-time status pills (`SCHEDULED`, `DRAFT`, `PUBLISHED`).
 
 ### 4. Meta Ads Manager
-Located in the middle-right grid (`app/components/MetaAdsManager.tsx`):
-- **Campaign Performance Overview**:
-  - **Total Spend**: Aggregated ad expenditure across campaigns (e.g., `$284.20`).
-  - **Average CTR**: Blended click-through rate across ad sets (e.g., `2.7%`).
-  - **Blended ROAS**: Overall return on advertising spend (e.g., `3.1x`).
-- **Campaign Breakdown**:
-  - Details for individual campaigns (`Retargeting — Cart Abandoners`, `Prospecting — Lookalike 1%`, `Brand Awareness — Reels`).
-  - Real-time status tags (`Active` in emerald, `Paused` in slate).
-  - Metrics per campaign: Spend, CTR, and ROAS.
-- **Integration Trigger**: "Connect Meta Ads" action button with interactive "Coming soon" tooltip.
+- **Component**: [`app/components/MetaAdsManager.tsx`](file:///c:/Users/Sridhar's%20Nitro/Documents/jarvis%20lite/app/components/MetaAdsManager.tsx)
+- **API Endpoint**: `GET /api/ads`
+- **Capabilities**:
+  - Tracks live campaigns (`Retargeting`, `Prospecting`, `Brand Awareness`) with individual spend, CTR, impressions, and ROAS.
+  - Calculates blended ROAS and aggregated ad expenditure across campaigns.
+  - "Manage Integration" dialog detailing required Meta Marketing API scopes (`ads_read`, `read_insights`, `business_management`).
 
-### 5. Subscriptions & Recurring Revenue
-Located in the bottom-left grid (`app/components/Subscriptions.tsx`):
-- **Subscription Health Metrics**:
-  - **MRR**: Recurring revenue breakdown.
-  - **Active Subscribers**: Current subscriber count (e.g., `1,842`) with growth delta (+3.4%).
-  - **Churn Rate**: Real-time churn tracking (e.g., `2.1%`, delta -0.4%).
-- **Plan Tier Distribution**:
-  - Visual distribution bars with glowing gradient progress tracks (`Starter`, `Pro`, `Enterprise`).
-  - Subscriber counts and exact percentage market share (56%, 33%, 11%).
-- **Integration Trigger**: "Connect RevenueCat" button for mobile/web app subscription synchronization.
+### 5. Subscriptions Management
+- **Component**: [`app/components/Subscriptions.tsx`](file:///c:/Users/Sridhar's%20Nitro/Documents/jarvis%20lite/app/components/Subscriptions.tsx)
+- **API Endpoint**: `GET /api/subscriptions`
+- **Webhooks**: `POST /api/webhooks/stripe`
+- **Capabilities**:
+  - Live breakdown of subscriber tiers: **Starter**, **Pro**, and **Enterprise**.
+  - Dynamic progress bars reflecting percentage market share and subscriber counts.
+  - Churn rate calculation based on active vs. cancelled subscriber records.
+  - Verified Stripe webhook endpoint with signature verification for `invoice.payment_succeeded` and subscription lifecycle events.
 
-### 6. Support Center (Ticket Inbox)
-Located in the bottom-right grid (`app/components/SupportCenter.tsx`):
-- **Multi-Channel Inbox Overview**: Unified list of customer support conversations.
-- **Ticket Attributes**:
-  - Unique Ticket ID (e.g., `#1042`, `#1041`).
-  - Subject and customer inquiry description.
-  - Customer email address / requester identifier.
-  - Dynamic Priority Tags: `High` (Rose), `Medium` (Amber), and `Low` (Slate).
-  - Status Tags: `Open` (Cyan), `In progress` (Amber), and `Resolved` (Emerald).
-  - Relative timestamp (e.g., `12m ago`, `48m ago`, `2h ago`, `1d ago`).
-- **Integration Trigger**: "Connect support inbox" button for ticketing platforms (Zendesk, Intercom, Crisp, Freshdesk).
-
-### 7. Design System & HUD Glassmorphism
-Configured across `app/globals.css`, `tailwind.config.ts`, and `app/components/ui.tsx`:
-- **Glass Card Component (`GlassCard`)**: Ultra-modern frosted-glass finish using `backdrop-blur-xl`, `bg-white/[0.04]`, and subtle border highlighting (`border-white/10`).
-- **HUD Grid Background**: Custom CSS radial gradient mesh with subtle geometric grid lines.
-- **Ambient Glow**: Dynamic radial background lighting illuminating key dashboard sectors.
-- **Status Indicators**:
-  - Pulsing amber `Demo data` badge.
-  - Glowing emerald `All systems nominal` status dot.
-- **Custom Scrollbar**: Sleek, slim `.hud-scroll` styling tailored for dark interfaces.
+### 6. Customer Support Center
+- **Component**: [`app/components/SupportCenter.tsx`](file:///c:/Users/Sridhar's%20Nitro/Documents/jarvis%20lite/app/components/SupportCenter.tsx)
+- **API Endpoint**: `GET /api/support/tickets`, `POST /api/support/tickets`, `PATCH /api/support/tickets/[id]`
+- **Capabilities**:
+  - Real-time helpdesk ticketing system.
+  - Live keyword search across ticket subject and customer requester email.
+  - Interactive **"+ New Ticket"** modal with priority levels (`HIGH`, `MEDIUM`, `LOW`).
+  - Single-click status toggling (`Open` ⟷ `Resolved`) with database updates.
 
 ---
 
-## 💻 Running & Developing Jarvis Lite
+## 🗄 Database Models (Prisma ORM)
 
-### Prerequisites
-- **Node.js**: v18.0.0 or later (installed: v24.18.0)
-- **npm**: v9.0.0 or later (installed: 12.0.2)
-
-### Commands
-In your terminal from the project root (`c:\Users\Sridhar's Nitro\Documents\jarvis lite`):
-
-1. **Start the local development server**:
-   ```bash
-   npm run dev
-   ```
-   Open [http://localhost:3000](http://localhost:3000) in your web browser.
-
-2. **Create an optimized production build**:
-   ```bash
-   npm run build
-   ```
-
-3. **Start the production server**:
-   ```bash
-   npm run start
-   ```
-
-4. **Run code linting**:
-   ```bash
-   npm run lint
-   ```
+Located in [`prisma/schema.prisma`](file:///c:/Users/Sridhar's%20Nitro/Documents/jarvis%20lite/prisma/schema.prisma):
+- `User`: Accounts, credentials, timestamps.
+- `Organization`: Multi-tenant boundary for business data.
+- `OrganizationMember`: Role-based membership (`OWNER`, `ADMIN`, `MANAGER`, `VIEWER`).
+- `RevenueRecord`: Real financial transactions.
+- `BusinessMetric`: Snapshot indicators with delta trends.
+- `SocialAccount` & `SocialPost`: Broadcast queue and drafts.
+- `AdAccount` & `AdCampaign`: Meta Ads performance metrics.
+- `SubscriptionPlan` & `Subscriber`: Recurring revenue tiers.
+- `SupportTicket` & `TicketNote`: Customer support workflows.
+- `Conversation` & `Message`: AI chat logs.
+- `IntegrationCredential`: Masked API keys and OAuth status.
+- `ActivityLog`: Audit trail of executive actions.
 
 ---
 
-## 🌐 Production & Deployment
+## 🧪 Automated Verification & Testing
 
-- **Vercel**: Configured out of the box with `vercel.json` for one-click deployment.
-- **Docker / Self-Hosting**: Easily containerized using standard Next.js standalone output.
+Jarvis Lite includes an automated end-to-end audit test suite:
+
+```bash
+# Run the test suite
+npm test
+```
+
+Verifies:
+1. Database connectivity and schema generation.
+2. Bcrypt password hashing and salt verification.
+3. JWT session token signing and verification.
+4. Cross-tenant organization data isolation.
+5. Social post validation and database persistence.
+6. Support ticket creation, search, and lifecycle updates.
+7. Subscription tier metrics and MRR calculations.
+8. Meta ad campaign metrics and ROAS calculations.
 
 ---
 
-## 🔮 Future Roadmap & Live API Integrations
+## 💻 Running & Deployment
 
-Jarvis Lite has been architected to readily connect with live production APIs:
-- **LLM Command Engine**: Connect the chat interface in `CommandCenter.tsx` to OpenAI (`gpt-4o`), Anthropic Claude, or Google Gemini via Next.js Route Handlers (`app/api/chat/route.ts`).
-- **Payment & Invoicing**: Connect `BusinessMetrics.tsx` and `Subscriptions.tsx` directly to the **Stripe API** or **RevenueCat API**.
-- **Ad Campaigns**: Fetch live metrics in `MetaAdsManager.tsx` via the **Meta Graph Marketing API** or Google Ads API.
-- **Social Media Automation**: Publish queued posts via the **Twitter/X API v2** and **LinkedIn Marketing Developer Platform**.
-- **Customer Tickets**: Sync real-time tickets in `SupportCenter.tsx` with **Zendesk**, **Intercom**, or **Slack**.
+### Development Server
+```bash
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000). If not logged in, you will be redirected to `/login`, where you can sign in, register a new workspace, or use **1-Click Executive Demo Access**.
+
+### Production Build
+```bash
+npm run build
+npm run start
+```
