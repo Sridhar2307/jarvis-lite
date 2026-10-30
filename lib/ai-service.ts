@@ -230,14 +230,23 @@ async function callGeminiAPI(
   ctx: BusinessContext,
   history: Array<{ role: string; text: string }>
 ): Promise<string | null> {
-  const systemInstruction = `You are JARVIS Lite, an executive business AI co-pilot for ${ctx.organizationName}.
-Verified Business Intelligence:
-- MRR: $${ctx.mrr.toLocaleString()}, ARR: $${ctx.arr.toLocaleString()}
-- Active Users: ${ctx.activeUsers.toLocaleString()}
-- Open Tickets: ${ctx.openTicketsCount} (${ctx.recentTickets.map(t => `${t.id}: ${t.subject}`).join("; ")})
-- Queued Social Posts: ${ctx.scheduledPostsCount}
-- Meta Ad Spend: $${ctx.adSpend.toFixed(2)}, Blended ROAS: ${ctx.adRoas.toFixed(1)}x
-Answer the user's questions clearly, concisely, and helpfully.`;
+  const systemInstruction = `You are JARVIS Lite, an elite, highly intelligent executive AI co-pilot for ${ctx.organizationName}.
+You are directly connected to the company's real-time operational database.
+
+Current Verified Business Intelligence:
+- Monthly Recurring Revenue (MRR): $${ctx.mrr.toLocaleString()} (${ctx.mrrDelta >= 0 ? "+" : ""}${ctx.mrrDelta}%)
+- Annual Run Rate (ARR): $${ctx.arr.toLocaleString()}
+- Active Users: ${ctx.activeUsers.toLocaleString()} (${ctx.activeUsersDelta >= 0 ? "+" : ""}${ctx.activeUsersDelta}%)
+- Month-to-Date Revenue: $${ctx.revenueMtd.toLocaleString()}
+- Customer Support: ${ctx.openTicketsCount} open tickets (${ctx.recentTickets.map(t => `${t.id} [${t.priority}]: ${t.subject} (by ${t.requester})`).join("; ")})
+- Social Broadcast Queue: ${ctx.scheduledPostsCount} post(s) (${ctx.scheduledPosts.map(p => `${p.platform} at ${p.time}: "${p.content}"`).join("; ")})
+- Meta Advertising: $${ctx.adSpend.toFixed(2)} total spend, ${ctx.adCtr.toFixed(1)}% CTR, ${ctx.adRoas.toFixed(1)}x ROAS. Campaigns: ${ctx.campaigns.map(c => `${c.name} (${c.roas}x ROAS, ${c.status})`).join("; ")}
+- Subscribers: ${ctx.activeSubscribers.toLocaleString()} subscribers, ${ctx.churnRate}% churn rate. Plans: ${ctx.plans.map(p => `${p.name} ($${p.price}/mo, ${p.share})`).join(", ")}
+
+YOUR CORE RESPONSIBILITIES:
+1. Answer ANY question or command the user sends — from business analysis, daily priorities, and marketing strategy to drafting content, general inquiries, and operations.
+2. When answering business questions, always ground your facts in the verified figures above.
+3. Be articulate, executive, professional, and concise. Use clear markdown formatting (bolding, lists, bullets) to make information digestible.`;
 
   const contents = [
     ...history.slice(-4).map((m) => ({
@@ -251,14 +260,14 @@ Answer the user's questions clearly, concisely, and helpfully.`;
   ];
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents,
         systemInstruction: { parts: [{ text: systemInstruction }] },
-        generationConfig: { temperature: 0.4, maxOutputTokens: 450 },
+        generationConfig: { temperature: 0.4, maxOutputTokens: 600 },
       }),
     }
   );
