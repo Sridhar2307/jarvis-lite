@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Zap, LogOut, Database, Building } from "lucide-react";
+import { Zap, LogOut, Database, Building, Download } from "lucide-react";
 import CommandCenter from "./components/CommandCenter";
 import BusinessMetrics from "./components/BusinessMetrics";
 import SocialMediaHub from "./components/SocialMediaHub";
@@ -21,6 +21,7 @@ export default function Home() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [seeding, setSeeding] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
 
   const fetchProfile = useCallback(async () => {
@@ -65,6 +66,28 @@ export default function Home() {
     }
   }
 
+  async function handleExportCSV() {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/export/csv");
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `jarvis-executive-export-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      console.error("Export error", err);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <main className="relative min-h-screen">
       <div className="ambient-glow" />
@@ -105,6 +128,17 @@ export default function Home() {
             >
               <Database className="h-3.5 w-3.5" />
               {seeding ? "Syncing DB..." : "Seed Starter DB Records"}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              disabled={exporting}
+              title="Download full business report CSV"
+              className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-white/10 hover:text-cyan-300 disabled:opacity-50"
+            >
+              <Download className="h-3.5 w-3.5 text-cyan-400" />
+              {exporting ? "Generating CSV..." : "Export CSV"}
             </button>
 
             <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1.5 backdrop-blur-xl">

@@ -82,6 +82,7 @@ export const saveIntegrationSchema = z.object({
     "FRESHDESK",
     "META",
     "OPENAI",
+    "GEMINI",
     "TWITTER",
     "LINKEDIN",
     "INSTAGRAM",

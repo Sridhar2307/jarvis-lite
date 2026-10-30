@@ -30,6 +30,12 @@ export async function GET(req: NextRequest) {
         lastSyncedAt: null,
         metadata: null,
       },
+      GEMINI: {
+        status: process.env.GEMINI_API_KEY ? "CONNECTED" : "NOT_CONFIGURED",
+        apiKeyMasked: process.env.GEMINI_API_KEY ? `${process.env.GEMINI_API_KEY.substring(0, 4)}••••••••` : null,
+        lastSyncedAt: null,
+        metadata: null,
+      },
       META: {
         status: process.env.META_APP_ID ? "CONNECTED" : "NOT_CONFIGURED",
         apiKeyMasked: null,
