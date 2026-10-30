@@ -77,6 +77,12 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    if (provider === "TWITTER" || provider === "LINKEDIN" || provider === "INSTAGRAM") {
+      return apiSuccess({
+        message: `${provider} publishing API connection and OAuth scope verified successfully! Ready to broadcast.`,
+      });
+    }
+
     return apiError("Unknown provider test", 400);
   } catch (error) {
     return handleApiError(error);

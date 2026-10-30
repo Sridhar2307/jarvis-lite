@@ -23,7 +23,7 @@ export const revenueRecordSchema = z.object({
 
 export const socialPostSchema = z.object({
   platform: z.enum(["Instagram", "X", "LinkedIn"]),
-  content: z.string().min(1, "Content cannot be empty").max(280, "Content cannot exceed 280 characters for multi-platform broadcasting"),
+  content: z.string().min(1, "Content cannot be empty").max(3000, "Content cannot exceed 3,000 characters"),
   scheduledFor: z.string().datetime().optional().nullable(),
   scheduledTimeString: z.string().max(100).optional().nullable(),
   status: z.enum(["DRAFT", "SCHEDULED", "PUBLISHED", "FAILED"]).default("DRAFT"),
@@ -74,7 +74,18 @@ export const adCampaignUpdateSchema = z.object({
 });
 
 export const saveIntegrationSchema = z.object({
-  provider: z.enum(["STRIPE", "REVENUECAT", "ZENDESK", "INTERCOM", "FRESHDESK", "META", "OPENAI"]),
+  provider: z.enum([
+    "STRIPE",
+    "REVENUECAT",
+    "ZENDESK",
+    "INTERCOM",
+    "FRESHDESK",
+    "META",
+    "OPENAI",
+    "TWITTER",
+    "LINKEDIN",
+    "INSTAGRAM",
+  ]),
   apiKey: z.string().min(1, "API key or token is required").optional(),
   webhookSecret: z.string().optional(),
   subdomain: z.string().optional(),
