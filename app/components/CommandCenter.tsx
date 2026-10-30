@@ -54,7 +54,7 @@ export default function CommandCenter() {
     const trimmed = input.trim();
     if (!trimmed || thinking) return;
 
-    const optimisticId = crypto.randomUUID();
+    const optimisticId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `opt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const now = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
     // Optimistically show user message
@@ -94,7 +94,7 @@ export default function CommandCenter() {
       setMessages((prev) => [
         ...prev,
         {
-          id: crypto.randomUUID(),
+          id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `err-${Date.now()}`,
           role: "ai",
           text: `⚠️ System Notice: ${errMsg}. Check database connectivity or API keys.`,
           time: now,

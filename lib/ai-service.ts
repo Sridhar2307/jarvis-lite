@@ -217,6 +217,7 @@ GUIDELINES:
       temperature: 0.4,
       max_tokens: 450,
     }),
+    signal: AbortSignal.timeout(6000),
   });
 
   if (!res.ok) return null;
@@ -259,8 +260,9 @@ YOUR CORE RESPONSIBILITIES:
     },
   ];
 
+  const model = "gemini-3.8-flash";
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -269,6 +271,7 @@ YOUR CORE RESPONSIBILITIES:
         systemInstruction: { parts: [{ text: systemInstruction }] },
         generationConfig: { temperature: 0.4, maxOutputTokens: 600 },
       }),
+      signal: AbortSignal.timeout(6000),
     }
   );
 

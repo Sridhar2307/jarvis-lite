@@ -123,7 +123,19 @@ export async function POST(req: NextRequest) {
 
       // 5. Subscription Plans & Subscribers
       await tx.subscriber.deleteMany({ where: { organizationId: orgId } });
-      const plans = await tx.subscriptionPlan.findMany({ where: { organizationId: orgId } });
+      let plans = await tx.subscriptionPlan.findMany({ where: { organizationId: orgId } });
+      
+      if (plans.length === 0) {
+        await tx.subscriptionPlan.createMany({
+          data: [
+            { organizationId: orgId, name: "Starter", price: 29, interval: "month" },
+            { organizationId: orgId, name: "Pro", price: 79, interval: "month" },
+            { organizationId: orgId, name: "Enterprise", price: 299, interval: "month" },
+          ],
+        });
+        plans = await tx.subscriptionPlan.findMany({ where: { organizationId: orgId } });
+      }
+
       const starterPlan = plans.find((p) => p.name === "Starter") || plans[0];
       const proPlan = plans.find((p) => p.name === "Pro") || plans[1];
       const enterprisePlan = plans.find((p) => p.name === "Enterprise") || plans[2];
