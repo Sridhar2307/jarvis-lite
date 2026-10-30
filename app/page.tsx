@@ -21,6 +21,7 @@ import SocialMediaHub from "./components/SocialMediaHub";
 import MetaAdsManager from "./components/MetaAdsManager";
 import Subscriptions from "./components/Subscriptions";
 import SupportCenter from "./components/SupportCenter";
+import NexoraVoiceBridge from "./components/NexoraVoiceBridge";
 import { StatusDot } from "./components/ui";
 
 type CurrentUser = {
@@ -343,6 +344,10 @@ export default function Home() {
         )}
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-12">
+          <div className="md:col-span-2 lg:col-span-12">
+            <NexoraVoiceBridge />
+          </div>
+
           <div className="md:col-span-2 lg:col-span-7">
             <CommandCenter />
           </div>

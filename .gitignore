@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# python & nexora
+nexora/config/api_keys.json
+nexora/**/__pycache__/
+nexora/**/.pytest_cache/
+nexora/venv/
+*.pyc
