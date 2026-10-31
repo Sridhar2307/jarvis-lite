@@ -52,3 +52,4 @@ Supported Roles:
 - **ADMIN**: Access to business operations, device pairing, and workflow execution.
 - **MANAGER**: Read access to metrics and management of support tickets and social posts.
 - **VIEWER**: Read-only dashboard access.
+

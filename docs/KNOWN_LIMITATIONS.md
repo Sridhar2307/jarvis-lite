@@ -20,3 +20,4 @@
 - [ ] Redis cluster backend for distributed multi-server outbox scaling.
 - [ ] End-to-end encrypted audio stream between web radar and Nexora daemon.
 - [ ] Granular visual bounding-box overlays for interactive screen annotations.
+

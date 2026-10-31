@@ -43,3 +43,4 @@ When an access token approaches expiration:
 2. Central backend verifies the SHA-256 hash of the refresh token.
 3. Central backend generates a new access token and rotated refresh token, updating the credential record.
 4. Nexora replaces its local cached tokens.
+

@@ -77,3 +77,4 @@ flowchart TD
 - Every business entity (`RevenueRecord`, `BusinessMetric`, `SupportTicket`, `SocialPost`, `AgentDevice`, `AgentTask`, `VisionSession`, `OutboxEvent`) is bound to an `Organization`.
 - All backend routes enforce `where: { organizationId }` scoping extracted from verified JWT session payloads or authenticated device records.
 - Plaintext device tokens are never stored in the database. Tokens are hashed with SHA-256 before persistence and lookup.
+

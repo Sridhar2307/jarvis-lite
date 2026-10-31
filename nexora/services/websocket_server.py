@@ -62,3 +62,4 @@ async def start_websocket_server(host: str = "127.0.0.1", port: int = 8765):
     except OSError as e:
         logger.warning(f"Could not bind WebSocket server on port {port} (already in use or unavailable): {e}")
         return None
+

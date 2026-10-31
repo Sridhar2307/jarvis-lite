@@ -42,3 +42,4 @@ In addition to the desktop Python voice engine, the web dashboard includes a bui
 - Real-time transcript display.
 - One-click quick actions: "Executive Briefing", "Check MRR", "Show Ad ROAS", "Open Tickets".
 - Direct integration with local Nexora WebSocket on `ws://127.0.0.1:8765`.
+

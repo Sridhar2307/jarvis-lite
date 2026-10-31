@@ -56,3 +56,4 @@ Nexora securely authenticates with Jarvis Lite, caches its hashed access tokens 
 
 When Nexora runs, it hosts a local WebSocket server on `ws://127.0.0.1:8765`.
 The Jarvis Lite web dashboard connects to this local port automatically via `NexoraVoiceBridge.tsx` to stream status, audio radar waves, and trigger local desktop actions directly from the browser!
+

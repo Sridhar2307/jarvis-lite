@@ -49,3 +49,4 @@ export async function POST(req: NextRequest) {
     serverTime: new Date().toISOString(),
   });
 }
+

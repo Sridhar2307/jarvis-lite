@@ -488,6 +488,79 @@ TOOL_DECLARATIONS = [
         },
         "required": ["origin", "destination", "date"]
     }
+},
+{
+    "name": "jarvis_get_metrics",
+    "description": "Fetch live business metrics (MRR, ARR, active users, month-to-date revenue) from Jarvis Lite executive database.",
+    "parameters": {
+        "type": "OBJECT",
+        "properties": {},
+        "required": []
+    }
+},
+{
+    "name": "jarvis_get_tickets",
+    "description": "Fetch open customer support tickets from the Jarvis Lite support center.",
+    "parameters": {
+        "type": "OBJECT",
+        "properties": {},
+        "required": []
+    }
+},
+{
+    "name": "jarvis_get_morning_briefing",
+    "description": "Fetch the comprehensive executive morning intelligence briefing, KPIs, and top priorities from Jarvis Lite.",
+    "parameters": {
+        "type": "OBJECT",
+        "properties": {},
+        "required": []
+    }
+},
+{
+    "name": "jarvis_schedule_post",
+    "description": "Queue or schedule a social media broadcast post in Jarvis Lite for X, Instagram, or LinkedIn.",
+    "parameters": {
+        "type": "OBJECT",
+        "properties": {
+            "platform": {"type": "STRING", "description": "X, Instagram, or LinkedIn"},
+            "content": {"type": "STRING", "description": "The message or announcement content to publish"},
+            "scheduled_time": {"type": "STRING", "description": "Optional schedule time string, e.g. 'Tomorrow at 10 AM'"}
+        },
+        "required": ["platform", "content"]
+    }
+},
+{
+    "name": "jarvis_create_ticket",
+    "description": "Create a new customer support ticket in Jarvis Lite.",
+    "parameters": {
+        "type": "OBJECT",
+        "properties": {
+            "subject": {"type": "STRING", "description": "Summary of the issue or support request"},
+            "requester_email": {"type": "STRING", "description": "Email address of the customer"},
+            "priority": {"type": "STRING", "description": "Priority: LOW, MEDIUM, or HIGH"}
+        },
+        "required": ["subject", "requester_email"]
+    }
+},
+{
+    "name": "jarvis_check_health",
+    "description": "Check connection health and device authentication status with Jarvis Lite.",
+    "parameters": {
+        "type": "OBJECT",
+        "properties": {},
+        "required": []
+    }
+},
+{
+    "name": "jarvis_pair_device",
+    "description": "Submit a single-use pairing code to link this desktop agent with Jarvis Lite.",
+    "parameters": {
+        "type": "OBJECT",
+        "properties": {
+            "code": {"type": "STRING", "description": "The 6-digit pairing code from the dashboard, e.g. JARVIS-123456"}
+        },
+        "required": ["code"]
+    }
 }
 ]
 
@@ -846,6 +919,11 @@ class JarvisLive:
             stream.close()
 
     async def run(self):
+        try:
+            from services.websocket_server import start_websocket_server
+            asyncio.create_task(start_websocket_server())
+        except Exception as ws_err:
+            print(f"[JARVIS] Local WebSocket warning: {ws_err}")
         client = genai.Client(
             api_key=_get_api_key(),
             http_options={"api_version": "v1beta"}

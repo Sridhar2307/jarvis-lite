@@ -32,3 +32,4 @@ To guarantee data consistency while providing instant zero-latency UI updates, J
   ```
 - **Keep-Alive**: Pings `: ping\n\n` every 15 seconds to prevent intermediate proxy / firewall disconnects.
 - **Client Auto-Reconnect**: Browser `EventSource` automatically re-establishes dropped connections with backoff.
+

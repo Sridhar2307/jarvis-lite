@@ -110,3 +110,4 @@ export function hasAgentScope(
 ): boolean {
   return auth.scopes.includes("*") || auth.scopes.includes(requiredScope);
 }
+
