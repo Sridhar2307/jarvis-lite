@@ -34,3 +34,4 @@ if defined BROWSER_PATH (
 echo [SUCCESS] Chained Window launched successfully.
 timeout /t 1 >nul
 exit
+
