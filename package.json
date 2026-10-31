@@ -9,6 +9,8 @@
     "lint": "next lint",
     "test": "npx tsx scripts/verify-all.ts",
     "dev:all": "node scripts/dev-all.js",
+    "ecd": "cmd /c launch-ecd.bat",
+    "shortcut": "powershell -ExecutionPolicy Bypass -File scripts/create-desktop-shortcut.ps1",
     "nexora": "cd nexora && python main.py",
     "db:push": "prisma db push",
     "db:studio": "prisma studio"

@@ -49,6 +49,11 @@ _APP_ALIASES = {
     "capcut":             {"Windows": "CapCut",                 "Darwin": "CapCut",              "Linux": "capcut"},
     "postman":            {"Windows": "Postman",                "Darwin": "Postman",             "Linux": "postman"},
     "figma":              {"Windows": "Figma",                  "Darwin": "Figma",               "Linux": "figma"},
+    "dashboard":          {"Windows": "msedge --app=http://localhost:3000", "Darwin": "open http://localhost:3000", "Linux": "xdg-open http://localhost:3000"},
+    "ecd":                {"Windows": "msedge --app=http://localhost:3000", "Darwin": "open http://localhost:3000", "Linux": "xdg-open http://localhost:3000"},
+    "jarvis":             {"Windows": "msedge --app=http://localhost:3000", "Darwin": "open http://localhost:3000", "Linux": "xdg-open http://localhost:3000"},
+    "executive dashboard":{"Windows": "msedge --app=http://localhost:3000", "Darwin": "open http://localhost:3000", "Linux": "xdg-open http://localhost:3000"},
+    "chained window":     {"Windows": "msedge --app=http://localhost:3000", "Darwin": "open http://localhost:3000", "Linux": "xdg-open http://localhost:3000"},
 }
 
 

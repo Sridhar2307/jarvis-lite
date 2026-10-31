@@ -18,9 +18,21 @@ export default function CommandCenter() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     fetchHistory();
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   useEffect(() => {
@@ -126,6 +138,9 @@ export default function CommandCenter() {
                 <StatusDot tone="emerald" />
                 Live Co-Pilot
               </span>
+              <span className="hidden md:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono text-cyan-300/80 bg-cyan-400/10 border border-cyan-400/20 rounded">
+                Ctrl + K
+              </span>
             </div>
           }
         />
@@ -190,6 +205,7 @@ export default function CommandCenter() {
       <div className="border-t border-white/5 p-4">
         <div className="flex items-end gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2 focus-within:border-cyan-400/40 focus-within:ring-1 focus-within:ring-cyan-400/30">
           <textarea
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {

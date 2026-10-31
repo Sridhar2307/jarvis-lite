@@ -144,3 +144,4 @@ You don't need a terminal open to talk to Nexora:
    - **Show Ad ROAS**
    - **Open Tickets**
 The radar HUD connects to your local Nexora daemon via `ws://127.0.0.1:8765` for zero-latency local execution!
+
